@@ -2,22 +2,10 @@
 
 import inquirer from "inquirer";
 import chalk from "chalk";
-import { isNumber, isString } from "util";
-import { faker } from '@faker-js/faker'
 import { myTable } from "./flight.js";
 import { booking } from "./user.js";
 import { access } from "./admin.js";
-// import * as user from "./user.js"
-// let plane =  `  ,--.
-//                     \  _\_
-//                     _\/_|_\____.'\
-//                 -(___.--._____(
-//                        \   \
-//                         \   \
-//                          `--'`
 
-
-// console.log(plane);
 
 class Account {
     static counter = 99999;
@@ -27,12 +15,12 @@ class Account {
     passportNumber: string
     origin: string
 
-    constructor() {
-        this.id = Account.counter++
-        this.firstName = ""
-        this.lastName = ""
-        this.passportNumber = ""
-        this.origin = ""
+    constructor(firstName: string, lastName: string, passportNumber: string, origin: string) {
+        this.id = Account.counter++;
+        this.firstName = firstName.toUpperCase();
+        this.lastName = lastName.toUpperCase();
+        this.passportNumber = passportNumber;
+        this.origin = origin;
     }
 
 }
@@ -43,8 +31,12 @@ class Account2 {
     memberRecord(object: Account) {
         this.memberArray.push(object)
     }
-
+    findAccount(firstName: string, lastName: string, id: number): Account|undefined{
+        return this.memberArray.find(account => account.firstName === firstName && account.lastName === lastName && account.id === id);
+    }
 }
+
+
 class Super_Admin {
     admin_Name: string
     password: string
@@ -56,7 +48,7 @@ class Super_Admin {
     }
 
 }
-const myAccount = new Account()
+
 const myAccount2 = new Account2()
 const myAdmin = new Super_Admin()
 //--------------------------------------------------------------//
@@ -69,26 +61,42 @@ async function login1() {
     const dataLog = await inquirer.prompt([
         {
             name: "logFname",
-            type: "input",
-            message: "Enter your First Name: "
+            type: "string",
+            message: "Enter your First Name: ",
+            filter: (input) => input.toUpperCase(),
+            validate: (input) => /^[A-Z]+$/.test(input) || "Please enter a valid name with alphabets only."
+        
         },
         {
             name: "logLname",
-            type: "input",
-            message: "Enter your Last Name: "
+            type: "string",
+            message: "Enter your Last Name: ",
+            filter: (input) => input.toUpperCase(),
+            validate: (input) => /^[A-Z]+$/.test(input) || "Please enter a valid name with alphabets only."
+        
         },
         {
-            name: chalk.yellow("logId"),
-            type: "input",
-            message: "Enter your Account ID: "
+            name: "logId",
+            type: "number",
+            message: "Enter your Account ID: ",
+            validate: (input) => !isNaN(parseInt(input, 10)) || "Please enter a valid numeric ID."
+        
+            
+            
         }
     ]);
 
     const { logFname, logLname, logId } = dataLog;
+    const id = parseInt(logId, 10);
 
-    function logIn(fName: string, lName: string, id: number) {
-        let match = myAccount2.memberArray.filter((item) => { item.firstName === fName && item.lastName === lName && item.id === id })
-        if (match) {
+    
+    
+    const account = myAccount2.findAccount(logFname, logLname,id);
+
+
+    if(account) {
+        
+        
             console.log("LogIn Successful!")
             console.log(chalk.bold.yellowBright("                             خوش آمدید به پلتفرم بلیط‌های الکترونیکی هواپیمایی ایران "))
             console.log(chalk.bold.yellowBright("                                      WELCOME TO THE E-TICKETING PURCHASE PORTAL"))
@@ -96,19 +104,13 @@ async function login1() {
 
             console.log(chalk.bold.yellowBright(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>DIRECT FLIGHTS FROM KARACHI TO TEHRAN<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"))
             console.log(myTable.toString())
-            console.log("user is login su");
-
-            // return booking()
-
-        }
-        else {
-            console.log("Invalid Details!")
+            
+            await booking();
+        } else {
+            console.log("Invalid Details!");
         }
     }
-    logIn(logFname, logLname, logId)
-
-}
-
+        
 //==========================================================// 
 
 
@@ -116,12 +118,13 @@ async function ticketing() {
     console.log(chalk.bold.blueBright("    .خوش آمدید به سامانه بلیط الکترونیکی هواپیمایی ایران"))
     console.log(chalk.bold.blueBright("            WELCOME TO IRAN AIR E-TICKETING PLATFORM"));
     console.log(chalk.bold.yellowBright("*").repeat(90))
+    while(true){
     const response = await inquirer.prompt([
         {
             name: "User",
             type: "list",
             message: chalk.bold.bgBlueBright.yellowBright("If You Are Already a Member LogIn To Your Account otherwise Sign Up"),
-            choices: ["Sign Up", "User LogIn", "Admin LogIn"]
+            choices: ["Sign Up", "User LogIn", "Admin LogIn","Exit"]
         }
     ]);
 
@@ -129,63 +132,58 @@ async function ticketing() {
         const SignUp = await inquirer.prompt([
             {
                 name: "fName",
-                type: "input",
+                type: "string",
                 message: "Enter Your First Name: ",
+                filter: (input) => input.toUpperCase(),
+                validate: (input) => /^[A-Z]+$/.test(input) || "Please enter a valid name with alphabets only."
+            
+                
 
             },
             {
                 name: "lName",
-                type: "input",
-                message: "Enter Your Last Name: "
+                type: "string",
+                message: "Enter Your Last Name: ",
+                filter: (input) => input.toUpperCase(),
+                validate: (input) => /^[A-Z]+$/.test(input) || "Please enter a valid name with alphabets only."
+            
             },
             {
                 name: "passportNum",
-                type: "input",
-                message: "Enter Your Passport Number: "
+                type: "password",
+                mask:"*",
+                message: "Enter Your Passport Number: ",
+                validate: (input) => /^[a-zA-Z0-9]{11}$/.test(input) || "Passport number must be exactly 11 alphanumeric characters."
             },
             {
                 name: "Origin",
-                type: "input",
-                message: "Enter Your Country of Origin: "
+                type: "string",
+                message: "Enter Your Country of Origin: ",
+                filter: (input) => input.toUpperCase(),
+                validate: (input) => /^[A-Z]+$/.test(input) || "Please enter a valid name with alphabets only."
+            
             }
         ]);
 
         const { fName, lName, passportNum, Origin } = SignUp;
 
-        if (fName && lName && Origin && passportNum) {
-
-            console.log("Details Submitted!");
-
-            myAccount2.memberRecord(SignUp)
-            console.log(myAccount2)
-
-            console.log(`Account Created Successfully. Your Account ID is:${chalk.yellow(myAccount.id)} \nPlease LogIn To Your Account`);
-
-            await login1()
-            await booking()
-
-        }
-        else {
+        if (!fName || !lName || !passportNum || !Origin) {
             console.log("Please Enter SignUp Details Correctly");
+        } else {
+            console.log("Details Submitted!");
+            const newAccount = new Account(fName, lName, passportNum, Origin);
+            myAccount2.memberRecord(newAccount);
+            console.log(`Account Created Successfully. Your Account ID is: ${chalk.yellow(newAccount.id)} \nPlease LogIn To Your Account`);
+                 await login1()
         }
-    }
+    } else if (response.User === "User LogIn") {
+        await login1();
 
-    //====================================================================================//
-
-
-    else if (response.User === "User LogIn") {
-
-      await login1()
-      await booking()
-
-    }
-
-
+    } 
     else if (response.User === "Admin LogIn") {
-
         const adminData = await inquirer.prompt([{
             name: "admin_name",
-            type: "input",
+            type: "string",
             message: "Enter Your Name: ",
             validate: (input) => {
                 if (input !== myAdmin.admin_Name) {
@@ -198,16 +196,10 @@ async function ticketing() {
         },
         {
             name: "admin_password",
-            type: "input",
+            type: "password",
             message: "Enter Your Password: ",
-            validate: (input) => {
-                if (input !== myAdmin.password) {
-                    console.log("Invalid Password")
-                }
-                else {
-                    return true
-                }
-            }
+            mask:"*",
+            validate: (input) => /^[A-Za-z0-9_]{9}$/.test(input) || "Password must be exactly 9 characters long and contain only numbers, alphabets, and underscores."
         }])
         console.log(chalk.bold.yellowBright("                       خوش آمدید به پلتفرم بلیط‌های الکترونیکی هواپیمایی ایران "))
         console.log(chalk.bold.yellowBright("                                      WELCOME TO THE ADMIN PORTAL"))
@@ -215,11 +207,15 @@ async function ticketing() {
 
         console.log(chalk.bold.yellowBright(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>DIRECT FLIGHTS FROM KARACHI TO TEHRAN<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"))
         console.log(myTable.toString())
-await access()
+
+
+        await access()
         
-    }
-
+    
+} else if (response.User === "Exit") {
+    console.log("Exiting...");
+    process.exit(0)
 }
-await ticketing()
-
-
+}
+}
+ticketing()

@@ -3,6 +3,7 @@ import chalk from "chalk";
 import { faker } from '@faker-js/faker';
 import Table from "cli-table";
 import { flightsArray } from "./flight.js";
+import { updateTable } from "./flight.js";
 export class user {
     masterCard;
     cash;
@@ -29,7 +30,7 @@ export class user {
     getDepartDate(flightNum) {
         const flight = flightsArray.find(flight => flight.flightNum === flightNum);
         if (flight) {
-            console.log(`${flight.departDate.toDateString()}`);
+            return (`${flight.departDate.toDateString()}`);
         }
         else {
             return null;
@@ -38,7 +39,7 @@ export class user {
     getDepartTime(flightNum) {
         const flight = flightsArray.find(flight => flight.flightNum === flightNum);
         if (flight) {
-            console.log(`${flight.departTime}`);
+            return (`${flight.departTime}`);
         }
         else {
             return null;
@@ -69,7 +70,7 @@ export class user {
         }
     }
     eTicket(flight, Class) {
-        console.log(chalk.bold.greenBright("Your Flight From Karachi To Tehran is Confirmed\n\n"));
+        console.log(chalk.bold.greenBright("Your Flight From Karachi To Tehran is Confirmed\n"));
         console.log(chalk.bold.yellow(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>E-TICKET<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"));
         const receipt = new Table({
             head: [chalk.bold('FLIGHT NUMBER'), chalk.bold('CLASS'), chalk.bold('AIRPORT'), chalk.bold('TERMINAL')]
@@ -80,104 +81,144 @@ export class user {
 }
 export const myUser = new user();
 export async function booking() {
-    const response = await inquirer.prompt([
-        {
-            name: "flight",
-            type: "list",
-            message: "Select Your Flight: ",
-            choices: flightsArray.map(item => item.flightNum),
-            validate: (input) => {
-                if (!input) {
-                    console.log("Please Select an Option");
-                }
-                else {
-                    return true;
-                }
-            }
-        }, {
-            name: "Class",
-            type: "list",
-            message: "Which Class Would You Like To Travel In?",
-            choices: ["Business Class", "Economy Class"],
-            validate: (input) => {
-                if (!input) {
-                    console.log("Please Select an Option");
-                }
-                else {
-                    return true;
-                }
-            }
-        }
-    ]);
-    const { flight, Class } = response;
-    if (Class === "Business Class") {
-        const ask = await inquirer.prompt({
-            name: "bSeat",
-            type: "input",
-            message: "How Many Seats You Want To Book:"
-        });
-        if ((!ask.bSeat)) {
-            console.log("Enter The Number Of Seats You need to Book");
-        }
-        else if (flight.bSeats === 0) {
-            console.log("All The Saets Have Been Booked! ");
-        }
-        else if (flight.bSeats < ask.bSeat) {
-            console.log(`Few Seats Are Available,You Can Book Only ${flight.bSeats}`);
-        }
-        else {
-            console.log(`${ask.bSeat} Seats/Seat Booked`);
-            console.log(`Amount Payable is ${ask.bSeat * flight.bTicketFare}`);
-        }
-    }
-    else if (response.class === "Economy Class") {
-        const ask = await inquirer.prompt({
-            name: "eSeat",
-            type: "input",
-            message: "How Many Seats You Want To Book:"
-        });
-        if ((!ask.eSeat)) {
-            console.log("Enter The Number Of Seats You need to Book");
-        }
-        else if (flight.eSeats === 0) {
-            console.log("All The Saets Have Been Booked! ");
-        }
-        else if (flight.eSeats < ask.eSeat) {
-            console.log(`Few Seats Are Available,You Can Book Only ${flight.eSeats}`);
-        }
-        else {
-            console.log(`${ask.eSeat} Seats/Seat Booked ${flight.eTicketFare}`, "eseat");
-            console.log(`Amount Payable is ${ask.eSeat * flight.eTicketFare}`);
-        }
-    }
-    if (flight && Class) {
-        const answer = await inquirer.prompt([
+    let exit = false;
+    while (!exit) {
+        const response = await inquirer.prompt([
             {
-                name: "payment",
+                name: "flight",
                 type: "list",
-                message: "Select Your Payment Method:",
-                choices: ["Cash", "Master Card"]
+                message: "Select Your Flight: ",
+                choices: [...flightsArray.map(item => item.flightNum), "Exit"],
+                validate: (input) => {
+                    if (!input) {
+                        return "Please Select an Option";
+                    }
+                    else {
+                        return true;
+                    }
+                }
             }
         ]);
-        if (answer.payment === "Cash") {
-            const pay = await inquirer.prompt({
-                name: "paid",
-                type: "input",
-                message: "Enter Amount:"
-            });
-            myUser.purchaseCash(pay.paid);
+        if (response.flight === "Exit") {
+            console.log("Exiting");
+            exit = true;
+            continue;
         }
-        else if (answer.payment === "Master Card") {
-            const pay = await inquirer.prompt({
-                name: "paid",
-                type: "input",
-                message: "Enter Amount:"
-            });
-            myUser.purchaseCard(pay.paid);
+        const selectedFlight = flightsArray.find(f => f.flightNum === response.flight);
+        if (!selectedFlight) {
+            console.log("Flight not found!");
+            continue;
         }
-        else {
-            console.log("Please Select a Valid Payment Method");
+        // Calculate the difference between the current date and the departure date
+        const currentDate = new Date().getTime();
+        const departDate = new Date(selectedFlight.departDate).getTime();
+        const diffDays = Math.ceil((departDate - currentDate) / (1000 * 60 * 60 * 24));
+        // Check if the departure date is at least 15 days away
+        if (diffDays < 15) {
+            console.log(chalk.bold.redBright(`Booking Closed! You can only book flights with a departure date that is at least 15 days from today.`));
+            continue;
+        }
+        const classResponse = await inquirer.prompt([
+            {
+                name: "Class",
+                type: "list",
+                message: "Which Class Would You Like To Travel In?",
+                choices: ["Business Class", "Economy Class"],
+                validate: (input) => {
+                    if (!input) {
+                        return "Please Select an Option";
+                    }
+                    else {
+                        return true;
+                    }
+                }
+            }
+        ]);
+        const { flight, Class } = { flight: response.flight, Class: classResponse.Class };
+        if (Class === "Business Class") {
+            const ask = await inquirer.prompt({
+                name: "bSeat",
+                type: "input",
+                message: "How Many Seats You Want To Book:"
+            });
+            const seatsToBook = parseInt(ask.bSeat, 10);
+            if ((!ask.bSeat)) {
+                console.log("Enter The Number Of Seats You need to Book");
+            }
+            else if (selectedFlight && selectedFlight.bSeats === 0) {
+                console.log("All The Seats Have Been Booked! ");
+            }
+            else if (selectedFlight && selectedFlight.bSeats < seatsToBook) {
+                console.log(`Few Seats Are Available, You Can Book Only ${selectedFlight.bSeats}`);
+            }
+            else if (selectedFlight) {
+                selectedFlight.bSeats -= seatsToBook;
+                updateTable();
+                const amountPayable = seatsToBook * selectedFlight.bTicketFare;
+                console.log(`${seatsToBook} Seats/Seat Booked`);
+                console.log(`Amount Payable is $${amountPayable}`);
+                const paymentResponse = await inquirer.prompt([
+                    {
+                        name: "paymentMethod",
+                        type: "list",
+                        message: "Select Payment Method: ",
+                        choices: ["Cash", "Card"]
+                    }
+                ]);
+                if (paymentResponse.paymentMethod === "Cash") {
+                    myUser.purchaseCash(amountPayable);
+                }
+                else if (paymentResponse.paymentMethod === "Card") {
+                    const card = await inquirer.prompt({
+                        name: "CardNum",
+                        type: "password",
+                        mask: "$",
+                        message: "Enter card number: ",
+                        validate: (input) => /^[0-9]{11}$/.test(input) || "Card number must be exactly 11 numbers."
+                    });
+                    myUser.purchaseCard(amountPayable);
+                }
+                myUser.eTicket(flight, Class);
+            }
+        }
+        else if (Class === "Economy Class") {
+            const ask = await inquirer.prompt({
+                name: "eSeat",
+                type: "input",
+                message: "How Many Seats You Want To Book:"
+            });
+            const seatsToBook = parseInt(ask.eSeat, 10);
+            if ((!ask.eSeat)) {
+                console.log("Enter The Number Of Seats You need to Book");
+            }
+            else if (selectedFlight && selectedFlight.eSeats === 0) {
+                console.log("All The Seats Have Been Booked! ");
+            }
+            else if (selectedFlight && selectedFlight.eSeats < seatsToBook) {
+                console.log(`Few Seats Are Available, You Can Book Only ${selectedFlight.eSeats}`);
+            }
+            else if (selectedFlight) {
+                selectedFlight.eSeats -= seatsToBook;
+                updateTable();
+                const amountPayable = seatsToBook * selectedFlight.eTicketFare;
+                console.log(`${seatsToBook} Seats/Seat Booked`);
+                console.log(`Amount Payable is $${amountPayable}`);
+                const paymentResponse = await inquirer.prompt([
+                    {
+                        name: "paymentMethod",
+                        type: "list",
+                        message: "Select Payment Method: ",
+                        choices: ["Cash", "Card"]
+                    }
+                ]);
+                if (paymentResponse.paymentMethod === "Cash") {
+                    myUser.purchaseCash(amountPayable);
+                }
+                else if (paymentResponse.paymentMethod === "Card") {
+                    myUser.purchaseCard(amountPayable);
+                }
+                myUser.eTicket(flight, Class);
+            }
         }
     }
-    myUser.eTicket(flight, Class);
 }

@@ -1,82 +1,49 @@
 import inquirer from "inquirer"
 import chalk from "chalk"
-//import table from "cli-table";
-//import chalkAnimation from "chalk-animation"
-import {faker} from '@faker-js/faker'
-import terminalImage from 'terminal-image';
-import got from 'got';
-import Table from "cli-table";
-import * as user from "./user.js"
-import { myTable,Flight, flightsArray } from "./flight.js";
-
-
-// const body = await got('https://www.google.com/imgres?q=iran%20air%20image%20in%20png%20format&imgurl=https%3A%2F%2Fw7.pngwing.com%2Fpngs%2F374%2F793%2Fpng-transparent-iran-air-airplane-flight-airline-airplane-text-logo-computer-wallpaper.png&imgrefurl=https%3A%2F%2Fwww.pngwing.com%2Fen%2Fsearch%3Fq%3Diran%2BAir&docid=LaaJPW_vtod88M&tbnid=7Gnyp6zb9UpGXM&vet=12ahUKEwjq56imkqaGAxVdR_EDHdSPD-MQM3oECDYQAA..i&w=920&h=368&hcb=2&ved=2ahUKEwjq56imkqaGAxVdR_EDHdSPD-MQM3oECDYQAA').buffer();
-// console.log(await terminalImage.buffer(body),{width: '50%', height: '50%'});
-
-// const image=await terminalImage.file('file ka path add karo')
-// console.log(image, {width: '50%', height: '50%'});
+import { Flight,flightsArray,updateTable,myTable} from "./flight.js";
 
 
 
 export class adminControl{
  
-flightAdd(data:Flight){
-    
-    flightsArray.push(data)
-    myTable.push([data.flightNum,
-    data.departDate.toString(),
-    data.departTime,
-    data.bTicketFare,
-    data.bSeats.toString(),data.eTicketFare,data.eSeats.toString()])
-
-    console.log(myTable.toString())
-    console.log("FLIGHT ADDED SUCCESSFULLY!")
+ flightAdd(data: Flight) {
+        flightsArray.push(data);
+        updateTable();
+        console.log(myTable.toString());
+        console.log("FLIGHT ADDED SUCCESSFULLY!");
     }
      
         
-        
-flightUpdate(data:Flight){
-    flightsArray.push(data)
-let match=flightsArray.find((flight)=>{flight.flightNum===data.flightNum})
-       if(match){
-        let Find=flightsArray.indexOf(match)
-        flightsArray.forEach(flight => {
-            myTable.push([
-                flight.flightNum,
-                flight.departDate.toDateString(),
-                flight.departTime,
-                flight.eTicketFare,
-                flight.eSeats.toString(),
-                flight.bTicketFare,
-                flight.bSeats.toString()
-            ]);
-        });
-        
-    
-    console.log("FLIGHT UPDATED SUCCESSFULLY!");
-        console.log(myTable.toString())}
-    else {
+flightUpdate(data: Flight) {
+    let match = flightsArray.find(flight => flight.flightNum === data.flightNum);
+    if (match) {
+        Object.assign(match, data);
+        updateTable();
+        console.log(myTable.toString());
+    } else {
         console.log("FLIGHT NOT FOUND!");
     }
-             
 }
-flightRemove(data:String){
-    let match=flightsArray.filter((item)=>{item.flightNum===data})
-           if(match){
-            
-            console.log("Flight removed successfully!");
-            console.log(myTable.toString())
-        } else {
-            console.log("Flight not found.");
-        }
-                 
+
+    
+flightRemove(flightNum: string) {
+    const index = flightsArray.findIndex(flight => flight.flightNum === flightNum);
+    if (index !== -1) {
+        flightsArray.splice(index, 1);
+        updateTable();
+        console.log("FLIGHT REMOVED SUCCESSFULLY!");
+        console.log(myTable.toString());
+    } else {
+        console.log("FLIGHT NOT FOUND!");
     }
+}
     
 Analytics(){
+    
             console.log(chalk.bold.yellowBright("                         پروازهای مستقیم از کراچی به تهران"))
             console.log(chalk.bold.yellowBright("                        DIRECT FLIGHTS FROM KARACHI TO TEHRAN"))
             console.log(chalk.bold.yellowBright("*").repeat(90))
-
+             
             console.log(myTable.toString());
             
     
@@ -88,7 +55,9 @@ Analytics(){
 const myadminControl =new adminControl()
  
 export async function access(){
-    
+    let exit = false;
+
+    while (!exit) {
 const response=await inquirer.prompt([{
 
     name:"option_selected",
@@ -101,116 +70,176 @@ if(response.option_selected==="ADD FLIGHTS"){
  const add= await inquirer.prompt([
     {
     name:"flightNum",
-    type:"input",
-    message:"Enter Flight Number: "
+    type:"string",
+    message:"Enter Flight Number: ",
+    function (input:string) {
+        const flightNumFormat = /^[a-zA-Z0-9]+$/;
+        if (!flightNumFormat.test(input)) {
+            return "Flight number should consist of only letters and numbers.";
+        }
+        return true;
+    },
+    filter: function (input) {
+        return input.toUpperCase();
+    }
  },{
     name:"departDate",
     type:"input",
-    message:"Enter Departure Date: "
+    message: "Enter Departure Date (YYYY-MM-DD): ",
+    validate: function (input) {
+        const currentDate = new Date();
+        const inputDate = new Date(input);
+        if (isNaN(inputDate.getTime())) {
+            return "Please enter a valid date.";
+        }
+        const diffDays = Math.ceil((inputDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24));
+        if (diffDays < 30) {
+            return "The departure date must be at least 30 days from today.";
+        }
+        return true;
+    }
  },{
     name:"departTime",
-    type:"input",
-    message:"Enter Departure Time: "},
+    type:"string",
+    message: "Enter Departure Time (HH:mm): ",
+    validate: function (input) {
+                const timeFormat = /^([01]\d|2[0-3]):([0-5]\d)$/;
+                if (!timeFormat.test(input)) {
+                return "Please enter a valid time in 24-hour format (HH:mm).";
+                     }
+                return true;
+                    }
+                },
     {
     name:"eClassFare",
-    type:"input",
+    type:"number",
     message:"Enter Economy Class Fare: $/seat  "
  },{
     name:"eClass",
-    type:"input",
+    type:"number",
     message:"Enter The Number Of Seats Available in Economy Class:"
 },
     {
     name:"bClassFare",
-    type:"input",
+    type:"number",
     message:"Enter Business Class Fare: $/seat"
  },{
     name:"bClass",
-    type:"input",
+    type:"number",
     message:"Enter the Number of Seats Available in Business Class:"
  }])
- const{flightNum,departDate,departTime,eClassFare,eClass,bClassFare,bClass}=add
- const flightAdded=new Flight(flightNum,departDate,departTime,eClassFare,eClass,bClassFare,bClass)
+ const { flightNum, departDate, departTime, eClassFare, eClass, bClassFare, bClass } = add;
+        const flightAdded = new Flight(
+            flightNum,
+            new Date(departDate),
+            departTime,
+            parseFloat(eClassFare),
+            parseInt(eClass),
+            parseFloat(bClassFare),
+            parseInt(bClass)
+        );
  myadminControl.flightAdd(flightAdded)
 }
 
 else if(response.option_selected==="UPDATE FLIGHTS"){
     const update= await inquirer.prompt([{
         name:"flightNum",
-        type:"input",
-        message:"Enter Flight Number: "
+        type:"list",
+        message:"Select the Flight Number: ",
+        choices:flightsArray.map(item => item.flightNum)
      },{
         name:"departDate",
         type:"input",
-        message:"Enter Departure Date: "
+        message: "Enter Departure Date (YYYY-MM-DD): ",
+        validate: function (input) {
+            const currentDate = new Date();
+            const inputDate = new Date(input);
+            if (isNaN(inputDate.getTime())) {
+                return "Please enter a valid date.";
+            }
+            const diffDays = Math.ceil((inputDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24));
+            if (diffDays < 30) {
+                return "The departure date must be at least 30 days from today.";
+            }
+            return true;
+        }
      },{
         name:"departTime",
-        type:"input",
-        message:"Enter Departure Time: "},
+        type:"string",
+        message:"Enter Departure Time: ",
+        validate: function (input) {
+            const timeFormat = /^([01]\d|2[0-3]):([0-5]\d)$/;
+            if (!timeFormat.test(input)) {
+            return "Please enter a valid time in 24-hour format (HH:mm).";
+                 }
+            return true;
+                }
+            },
         {
         name:"eClassFare",
-        type:"input",
+        type:"number",
         message:"Enter Economy Class Fare: $/seat "
      },{
         name:"eClass",
-        type:"input",
+        type:"number",
         message:"Enter The Number Of Seats Available in Economy Class: "
     },
         {
         name:"bClassFare",
-        type:"input",
+        type:"number",
         message:"Enter Business Class Fare: $/seat "
     },{
         name:"bClass",
-        type:"input",
+        type:"number",
         message:"Enter The Number Of Seats Available in Business Class: "
     },
         
 ])
-const {flightNum,departDate,departTime,eClassFare,eClass,bClassFare,bClass}=update
-const FlightUpdated = new Flight(flightNum,departDate,departTime,eClassFare,eClass,bClassFare,bClass);
-myadminControl.flightUpdate(FlightUpdated) 
+
+const { flightNum, departDate, departTime, eClassFare, eClass, bClassFare, bClass } = update;
+const flightUpdated = new Flight(
+    flightNum,
+    new Date(departDate),
+    departTime,
+    parseFloat(eClassFare),
+    parseInt(eClass),
+    parseFloat(bClassFare),
+    parseInt(bClass)
+);
+myadminControl.flightUpdate(flightUpdated) 
 }
          
 
-else if(response.option_selected==="REMOVE FLIGHT"){
-    const ask= await inquirer.prompt({
-        name:"givenFlightNum",
-        type:"list",
-        message:"Choose the Flight Number You Want To Remove",
-        choices:flightsArray.map(item=>item.flightNum)
-    })
-    
-   let match=flightsArray.filter((item)=>{item.flightNum==ask.givenFlightNum})
-      if(match){
-       flightsArray.splice(ask.givenFlightNum.index,1)
-        console.log(myTable.toString())
-        console.log("FLIGHT REMOVED SUCCESSFULLY!")
-     }
-      else{
-        console.log("FLIGHT NOT FOUND!")
-     }
-    }
+else if (response.option_selected === "REMOVE FLIGHT") {
+    const ask = await inquirer.prompt({
+        name: "givenFlightNum",
+        type: "list",
+        message: "Choose the Flight Number You Want To Remove",
+        choices: flightsArray.map(item => item.flightNum)
+    });
 
+    myadminControl.flightRemove(ask.givenFlightNum);
     
+
+}
     
    
 else if(response.option_selected==="SHOW ANALYTICS"){
 
- console.log(myTable.toString())
+ myadminControl.Analytics()
  
 }
 
 
 else if(response.option_selected==="EXIT"){
 console.log(chalk.bold.blueBright("Exiting......"))
-
+exit=true
 }
 
 
 }
     
- 
+}
 
 
 
